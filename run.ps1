@@ -14,6 +14,9 @@
 # =============================================================================
 $ErrorActionPreference = "Stop"
 
+# Evita fallos de hardlink en carpetas sincronizadas (OneDrive/Dropbox, os error 396)
+$env:UV_LINK_MODE = "copy"
+
 $QuartoVersion = "1.6.42"
 $ToolsDir = Join-Path $PSScriptRoot ".tools"
 

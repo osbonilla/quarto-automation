@@ -142,6 +142,23 @@ bash run.sh
 uv run quarto render report.qmd
 ```
 
+## Solución de problemas
+
+**"os error 396" / "Failed to hardlink" al hacer `uv sync` (Windows):**
+ocurre cuando el proyecto está dentro de una carpeta sincronizada
+(OneDrive, Dropbox), cuyo filesystem no soporta hardlinks. Los scripts ya
+fijan `UV_LINK_MODE=copy` para evitarlo, pero la recomendación fuerte es
+**mover el proyecto fuera de OneDrive** (p. ej. a `C:\dev\`): un `.venv`
+tiene miles de archivos y sincronizarlos a la nube es lento y propenso a
+conflictos. GitHub ya versiona tu código; no necesitas OneDrive ahí.
+
+**PowerShell bloquea `run.ps1`:** ejecuta antes, en esa misma terminal:
+`Set-ExecutionPolicy -Scope Process Bypass`
+
+**`bash run.sh` falla en Windows con error de WSL:** no tienes una distro
+Linux instalada (p. ej. solo `docker-desktop`). Usa `.\run.ps1` en
+PowerShell, o Git Bash, o instala Ubuntu con `wsl --install -d Ubuntu`.
+
 ## Créditos
 
 - Dataset: **Palmer Penguins** — Dr. Kristen Gorman, Palmer Station LTER.

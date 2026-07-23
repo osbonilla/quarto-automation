@@ -14,6 +14,9 @@ set -euo pipefail
 say()  { printf "\n\033[1;34m==> %s\033[0m\n" "$*"; }
 warn() { printf "\033[1;33m%s\033[0m\n" "$*"; }
 
+# Evita fallos de hardlink en carpetas sincronizadas (OneDrive/Dropbox/iCloud)
+export UV_LINK_MODE=copy
+
 QUARTO_VERSION="1.6.42"
 TOOLS_DIR="$(pwd)/.tools"
 
