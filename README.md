@@ -20,23 +20,17 @@ practica-reproducibilidad/
 
 ## Requisitos previos
 
-Solo necesitas dos herramientas instaladas en tu sistema:
+**Ninguno obligatorio.** El script `run.sh` se auto-aprovisiona:
 
-| Herramienta | Instalación |
-|---|---|
-| [uv](https://docs.astral.sh/uv/getting-started/installation/) | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| [Quarto](https://quarto.org/docs/get-started/) | Descargar desde https://quarto.org/docs/get-started/ |
+- Si no tienes **uv**, lo instala automáticamente (instalador oficial, sin sudo, en `~/.local/bin`).
+- Si no tienes **Quarto**, descarga una copia local dentro del proyecto (`.tools/`, sin sudo).
+- Si no tienes la versión de **Python** requerida, uv la descarga según `.python-version`.
 
-> No necesitas instalar Python manualmente: `uv` descarga y fija la versión
-> correcta según `.python-version`. Tampoco necesitas crear ni activar
-> ambientes virtuales a mano.
+Solo se asume una terminal bash con `curl` (o `wget`) y `tar` — estándar en
+Linux, macOS y Git Bash en Windows.
 
-Verifica que ambas estén disponibles:
-
-```bash
-uv --version
-quarto --version
-```
+> Si ya tienes uv y/o Quarto instalados, el script los detecta y los usa
+> directamente sin instalar nada.
 
 ## Ejecución (un solo comando)
 
@@ -48,6 +42,7 @@ bash run.sh
 
 Eso es todo. El script `run.sh` hace, en orden:
 
+0. **Bootstrap**: instala uv y/o descarga Quarto localmente si no existen.
 1. `uv sync` — crea el ambiente virtual e instala las dependencias exactas
    registradas en `uv.lock` (pandas, altair, numpy, jupyter).
 2. Descarga `penguins.csv` desde la fuente pública y lo guarda en

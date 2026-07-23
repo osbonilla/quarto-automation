@@ -1,3 +1,6 @@
+# Herramientas descargadas por run.sh (Quarto local)
+.tools/
+
 # Ambiente virtual creado por uv
 .venv/
 
