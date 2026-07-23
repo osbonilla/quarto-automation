@@ -135,10 +135,10 @@ categorías lado a lado: mediana, rango intercuartílico y dispersión de un
 vistazo.
 
 ```{python}
-alt.Chart(penguins).mark_boxplot().encode(
+alt.Chart(penguins).mark_boxplot(size=80).encode(
     x=alt.X("species:N", title="Species"),
     y=alt.Y("body_mass_g:Q", title="Body mass (g)")
-)
+).properties(width=600, height=400)
 ```
 
 **Observación:** confirma la sospecha del gráfico A — los Gentoo tienen una
