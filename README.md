@@ -32,25 +32,36 @@ Linux, macOS y Git Bash en Windows.
 > Si ya tienes uv y/o Quarto instalados, el script los detecta y los usa
 > directamente sin instalar nada.
 
-## Ejecución (un solo comando)
+## Ejecución (un solo comando, según tu sistema)
+
+Primero clona el repositorio:
 
 ```bash
 git clone https://github.com/<tu-usuario>/repro-penguins-quarto.git
 cd repro-penguins-quarto
-bash run.sh
 ```
 
-Eso es todo. El script `run.sh` hace, en orden:
+Luego ejecuta **el punto de entrada de tu sistema** — los tres hacen
+exactamente lo mismo:
 
-0. **Bootstrap**: instala uv y/o descarga Quarto localmente si no existen.
-1. `uv sync` — crea el ambiente virtual e instala las dependencias exactas
-   registradas en `uv.lock` (pandas, altair, numpy, jupyter).
-2. Descarga `penguins.csv` desde la fuente pública y lo guarda en
-   `practica-reproducibilidad/data/`.
-3. `quarto render report.qmd` — ejecuta todo el código Python y genera
-   `practica-reproducibilidad/report.html` (autocontenido, con
-   `embed-resources: true`) junto con las figuras en
-   `practica-reproducibilidad/figures/`.
+| Tu sistema | Comando | Necesitas instalar antes |
+|---|---|---|
+| Linux / macOS / WSL / Git Bash | `bash run.sh` | Nada |
+| Windows (PowerShell, sin WSL) | `.\run.ps1` | Nada |
+| Cualquier OS con Docker | `docker compose up --build` | Solo Docker |
+
+> En PowerShell, si el script está bloqueado, ejecuta antes:
+> `Set-ExecutionPolicy -Scope Process Bypass`
+
+Cada punto de entrada hace, en orden:
+
+0. **Bootstrap**: si falta `uv` lo instala automáticamente (sin admin/sudo);
+   si falta `quarto` descarga una copia portable a `.tools/` (Linux, macOS
+   y Windows). En Docker, la imagen ya trae ambas herramientas fijadas.
+1. `uv sync` — crea el ambiente e instala las dependencias exactas de `uv.lock`.
+2. Descarga `penguins.csv` a `practica-reproducibilidad/data/`.
+3. `quarto render report.qmd` — genera `practica-reproducibilidad/report.html`
+   (autocontenido) y las figuras en `practica-reproducibilidad/figures/`.
 
 Alternativa con Make:
 
@@ -75,7 +86,10 @@ repro-penguins-quarto/
 ├── pyproject.toml             # Dependencias del proyecto (gestionadas por uv)
 ├── uv.lock                    # Lockfile: versiones exactas para reproducibilidad
 ├── .python-version            # Versión de Python fijada
-├── run.sh                     # Pipeline completo en un solo comando
+├── run.sh                     # Pipeline (Linux / macOS / WSL / Git Bash)
+├── run.ps1                    # Pipeline (Windows PowerShell nativo)
+├── Dockerfile                 # Pipeline en contenedor (opcional)
+├── docker-compose.yml         # docker compose up --build
 ├── Makefile                   # Targets: all / render / clean
 ├── scripts/
 │   └── fetch_data.py          # Descarga la data a practica-reproducibilidad/data/

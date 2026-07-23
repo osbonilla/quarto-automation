@@ -1,0 +1,9 @@
+# Ejecuta el pipeline completo en un contenedor con un solo comando:
+#   docker compose up --build
+# El resultado aparece en ./practica-reproducibilidad/report.html
+services:
+  report:
+    build: .
+    volumes:
+      # Monta la carpeta de salida para que el HTML aparezca en tu maquina
+      - ./practica-reproducibilidad:/app/practica-reproducibilidad
