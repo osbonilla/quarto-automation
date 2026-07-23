@@ -1,0 +1,16 @@
+[project]
+name = "repro-penguins-quarto"
+version = "0.1.0"
+description = "Reporte reproducible de visualización de datos (Palmer Penguins) con Python, Altair y Quarto, gestionado con uv"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "altair>=5.3",
+    "jupyter>=1.0",
+    "vl-convert-python>=1.6",
+]
+
+[tool.uv]
+# El lockfile (uv.lock) fija las versiones exactas para reproducibilidad total.

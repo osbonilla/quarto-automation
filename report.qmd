@@ -1,0 +1,335 @@
+---
+title: "Del análisis exploratorio a una visualización reproducible"
+author: "Nombre del estudiante"
+format:
+  html:
+    toc: true
+    embed-resources: true
+jupyter: python3
+execute:
+  echo: true
+  warning: false
+  error: false
+---
+
+## Overview
+
+Un proyecto de visualización no termina en un solo gráfico. Para ser
+genuinamente útil — a un equipo, a un curso, o a tu yo del futuro — debe
+integrar **datos, código, visualizaciones y narrativa** en un flujo que
+cualquier otra persona pueda re-ejecutar desde cero y obtener el mismo
+resultado. Este reporte reproduce ese flujo completo: exploración,
+explicación y control de la aleatoriedad, siguiendo los principios de
+reproducibilidad de Claus O. Wilke (*Fundamentals of Data Visualization*,
+cap. 28).
+
+## 1. Setup
+
+Este reporte usa tres librerías: **pandas** para cargar e inspeccionar los
+datos, **NumPy** para operaciones aleatorias controladas (Parte III) y
+**Altair** para todos los gráficos. Las dependencias exactas están fijadas
+en `pyproject.toml` y `uv.lock`.
+
+```{python}
+from pathlib import Path
+
+import pandas as pd
+import numpy as np
+import altair as alt
+```
+
+## 2. El dataset: Palmer Penguins
+
+Usamos el dataset **Palmer Penguins**, recolectado por la Dra. Kristen Gorman
+y la red Palmer Station LTER en la Antártida. Es un dataset ecológico real
+(no sintético) que cubre tres especies de pingüinos observadas en tres islas
+del archipiélago de Palmer entre 2007 y 2009. Mezcla variables cuantitativas
+(medidas de pico y aleta, masa corporal) con categóricas (especie, isla,
+sexo), sin la complejidad extra de datos geoespaciales.
+
+| Variable | Descripción |
+|---|---|
+| `species` | Especie (Adelie, Chinstrap o Gentoo) |
+| `island` | Isla donde se observó el pingüino |
+| `bill_length_mm` | Longitud del pico (mm) |
+| `bill_depth_mm` | Profundidad del pico (mm) |
+| `flipper_length_mm` | Longitud de la aleta (mm) |
+| `body_mass_g` | Masa corporal (g) |
+| `sex` | Sexo del pingüino |
+| `year` | Año de observación |
+
+La data fue descargada automáticamente por `scripts/fetch_data.py` (paso 2
+del pipeline) y se lee aquí con una **ruta relativa** — nadie tiene que
+modificar rutas para re-ejecutar este reporte:
+
+```{python}
+DATA_FILE = Path("practica-reproducibilidad") / "data" / "penguins.csv"
+penguins = pd.read_csv(DATA_FILE)
+penguins.head()
+```
+
+---
+
+# Parte I — Análisis exploratorio
+
+En esta fase el objetivo es **descubrir** patrones, anomalías y relaciones —
+no producir una figura pulida. Privilegiamos la velocidad de iteración sobre
+el acabado visual, y miramos los datos desde varios ángulos antes de decidir
+qué vale la pena comunicar.
+
+## 3. Carga e inspección
+
+```{python}
+penguins.shape
+```
+
+El dataset tiene 344 filas y 8 columnas — suficientemente pequeño para
+explorar rápido y suficientemente grande para mostrar variabilidad real.
+
+```{python}
+penguins.isna().sum()
+```
+
+**Valores faltantes:** cuatro columnas de medidas físicas tienen exactamente
+2 nulos cada una — casi con certeza las mismas 2 filas, pingüinos cuyas
+medidas nunca se registraron. `sex` tiene 11 nulos, un conjunto distinto y
+mayor de registros incompletos. En los gráficos exploratorios no eliminamos
+estas filas manualmente: Altair excluye silenciosamente las filas con nulos
+en un campo codificado, que es el comportamiento correcto en esta etapa.
+Lo dejamos anotado explícitamente — una fila que "desaparece" sin
+explicación confunde a cualquier lector futuro.
+
+```{python}
+penguins.describe(include="all")
+```
+
+`body_mass_g` va de ~2700 g a ~6300 g — un rango amplio que sugiere
+diferencias reales entre grupos (probablemente especies) y no puro ruido.
+`species`, `island` y `sex` muestran pocas categorías: exactamente la
+estructura que hace útiles el faceteo y el color en los gráficos siguientes.
+
+## 4. Cuatro gráficos exploratorios
+
+### A. Distribución de la masa corporal
+
+Un histograma es el primer gráfico natural para una variable cuantitativa:
+muestra forma, dispersión y sesgo de la masa corporal con **todos** los
+pingüinos juntos, antes de dividir por categoría.
+
+```{python}
+alt.Chart(penguins).mark_bar().encode(
+    x=alt.X("body_mass_g:Q", bin=True, title="Body mass (g)"),
+    y=alt.Y("count():Q", title="Number of observations")
+)
+```
+
+**Observación:** la distribución no es una campana limpia — se ve bimodal,
+con un grupo de pingüinos livianos y otro menor de pingüinos notablemente
+más pesados. Agrupar todas las especies oculta estructura: es la señal para
+traer la variable categórica `species`.
+
+### B. Comparación por especie
+
+Un boxplot compara la distribución de una variable cuantitativa entre pocas
+categorías lado a lado: mediana, rango intercuartílico y dispersión de un
+vistazo.
+
+```{python}
+alt.Chart(penguins).mark_boxplot().encode(
+    x=alt.X("species:N", title="Species"),
+    y=alt.Y("body_mass_g:Q", title="Body mass (g)")
+)
+```
+
+**Observación:** confirma la sospecha del gráfico A — los Gentoo tienen una
+mediana de masa visiblemente mayor y un rango intercuartílico casi sin
+solaparse con Adelie y Chinstrap. La bimodalidad del histograma se explica
+casi por completo porque Gentoo es distinto de las otras dos especies.
+
+### C. Relación entre longitud de aleta y masa corporal
+
+Un scatter plot muestra la relación entre dos variables cuantitativas.
+Colorear por especie y añadir tooltip permite verificar si la relación se
+sostiene dentro de cada especie o es un artefacto de agrupar.
+
+```{python}
+alt.Chart(penguins).mark_circle(size=65, opacity=0.65).encode(
+    x=alt.X("flipper_length_mm:Q", title="Flipper length (mm)"),
+    y=alt.Y("body_mass_g:Q", title="Body mass (g)"),
+    color=alt.Color("species:N", title="Species"),
+    tooltip=["species", "island", "flipper_length_mm", "body_mass_g"]
+)
+```
+
+**Observación:** hay una relación positiva clara — aletas más largas van con
+pingüinos más pesados. Las tres especies se separan limpiamente sobre esa
+diagonal: Gentoo (aletas más largas, más pesados) se aparta de Adelie y
+Chinstrap, que se solapan más entre sí. Es la relación más clara hasta ahora
+y la candidata para el "hallazgo único" de la Parte II.
+
+### D. Small multiples por isla
+
+Repetir el mismo gráfico por subgrupo permite verificar si un patrón se
+mantiene a través de una tercera variable categórica, aquí `island`.
+Reusamos la codificación del gráfico C y la faceteamos.
+
+```{python}
+alt.Chart(penguins).mark_circle(opacity=0.65).encode(
+    x="flipper_length_mm:Q",
+    y="body_mass_g:Q",
+    color="species:N"
+).facet(
+    column=alt.Column("island:N", title="Island")
+)
+```
+
+**Observación:** revela un patrón invisible en el gráfico C: los Gentoo solo
+aparecen en la isla Biscoe, mientras Adelie está en las tres islas y
+Chinstrap solo en Dream. Es decir, `species` e `island` están
+**confundidas**: cualquier aparente "efecto isla" sobre la masa podría ser
+en realidad un efecto especie disfrazado. Exactamente el tipo de anomalía
+que la exploración debe sacar a la luz antes de comprometerse con una
+historia explicativa.
+
+---
+
+# Parte II — Del hallazgo a la explicación
+
+Cambiamos de modo: en lugar de buscar patrones, seleccionamos **un** hallazgo
+relevante y construimos una figura cuyo único trabajo es comunicarlo con
+claridad a una audiencia específica.
+
+## 5. Formulación del hallazgo
+
+**Hallazgo:** los pingüinos Gentoo tienen mayor longitud de aleta y mayor
+masa corporal que las otras dos especies.
+
+- **¿Quién es la audiencia?** Alguien que no conoce el dataset — p. ej., el
+  lector de un breve reporte de campo sobre los pingüinos del archipiélago
+  de Palmer, que quiere el resultado principal sin explorar los datos crudos.
+- **¿Qué debe entender de la figura?** Que Gentoo es físicamente la especie
+  más grande, y que eso aparece consistentemente en dos medidas relacionadas
+  a la vez (aleta y masa), no en una sola.
+- **¿Qué evidencia visual lo sostiene?** El scatter del gráfico C, donde el
+  clúster Gentoo se separa en ambos ejes.
+
+## 6. La figura explicativa final
+
+Reusa la codificación del gráfico C con decisiones deliberadas de
+presentación: un título que enuncia el hallazgo en lenguaje llano, un
+subtítulo con detalle de soporte y la fuente, y dimensiones fijas pensadas
+para la página de un reporte.
+
+```{python}
+chart = (
+    alt.Chart(penguins)
+    .mark_circle(size=70, opacity=0.65)
+    .encode(
+        x=alt.X("flipper_length_mm:Q", title="Flipper length (mm)"),
+        y=alt.Y("body_mass_g:Q", title="Body mass (g)"),
+        color=alt.Color("species:N", title="Species"),
+        tooltip=["species", "island", "flipper_length_mm", "body_mass_g"]
+    )
+    .properties(
+        title={
+            "text": "Gentoo penguins are larger",
+            "subtitle": [
+                "The species combines greater flipper length",
+                "and greater body mass than Adelie and Chinstrap.",
+                "Source: Palmer Penguins dataset (Palmer Station LTER)."
+            ]
+        },
+        width=650,
+        height=400
+    )
+)
+chart
+```
+
+La figura también se **exporta automáticamente** a
+`practica-reproducibilidad/figures/` — nunca se edita a mano en otra
+aplicación:
+
+```{python}
+FIGURES_DIR = Path("practica-reproducibilidad") / "figures"
+FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+chart.save(FIGURES_DIR / "final_figure.png", scale_factor=2)
+chart.save(FIGURES_DIR / "final_figure.html")
+print("Figura guardada en", FIGURES_DIR)
+```
+
+### Checklist de criterios de diseño
+
+- **El título comunica el hallazgo**, no solo los nombres de las variables.
+- **Unidades y etiquetas comprensibles** en ambos ejes.
+- **Sin elementos que no contribuyen**: dos ejes, un color, un tooltip.
+- **Jerarquía visual clara**: título y subtítulo llevan el mensaje; el
+  cuerpo del gráfico es la evidencia.
+- **Color consistente y accesible**: la misma codificación de especie usada
+  en toda la Parte I.
+- **Fuente de los datos citada** directamente en la figura.
+
+---
+
+# Parte III — Repetibilidad y control de la aleatoriedad
+
+Una visualización puede depender de operaciones aleatorias — muestrear filas
+o agregar jitter. Sin un seed fijo, el resultado exacto cambia en cada
+render aunque los datos no hayan cambiado. Esta sección muestra el problema
+y su solución.
+
+## 7. Por qué importan los seeds
+
+### 7.1 Muestreo sin seed
+
+```{python}
+sample_no_seed = penguins.sample(10)
+sample_no_seed.head()
+```
+
+Cada render de este reporte produce un conjunto **distinto** de filas aquí.
+Si una figura final dependiera de un muestreo así, dos renders del mismo
+`.qmd` darían dos gráficos diferentes con código y datos idénticos: eso
+rompe la reproducibilidad.
+
+### 7.2 Muestreo con seed
+
+```{python}
+sample_seeded = penguins.sample(100, random_state=42)  # seed fijo => muestra determinista
+sample_seeded.head()
+```
+
+Con `random_state=42` se extraen exactamente las mismas 100 filas en cada
+render. El valor `42` no es especial — cualquier entero fijo sirve; lo que
+importa es que el seed esté **fijado y registrado** en el código.
+
+### 7.3 Jitter controlado
+
+```{python}
+np.random.seed(42)
+penguins["body_mass_jitter"] = (
+    penguins["body_mass_g"]
+    + np.random.normal(0, 40, len(penguins))
+)
+penguins[["species", "body_mass_g", "body_mass_jitter"]].head()
+```
+
+**Conclusión esperada:** registrar el seed permite recrear exactamente cada
+componente aleatorio del análisis. Eso hace repetible el *producto final* —
+no solo el código sino el reporte renderizado: dos personas ejecutando el
+mismo `.qmd` sobre los mismos datos obtienen byte a byte la misma muestra y
+los mismos valores con jitter.
+
+---
+
+# Conclusión
+
+- **Exploración** (Parte I): muchos gráficos rápidos para descubrir; el
+  acabado no importa.
+- **Presentación** (Parte II): una sola figura pulida cuyo único trabajo es
+  comunicar un hallazgo a una audiencia definida.
+- **Reproducibilidad**: cualquiera puede clonar el repo y regenerar este
+  reporte con un comando (`bash run.sh`), gracias a rutas relativas,
+  dependencias fijadas con `uv.lock` y data descargada automáticamente.
+- **Repetibilidad**: los seeds fijos garantizan que cada componente
+  aleatorio produzca el mismo resultado en cada render.

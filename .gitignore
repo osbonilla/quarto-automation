@@ -1,0 +1,18 @@
+# Ambiente virtual creado por uv
+.venv/
+
+# Caché de Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Artefactos temporales de Quarto
+.quarto/
+report_files/
+
+# Productos generados por el pipeline (se recrean con `bash run.sh`).
+# Si tu entrega exige subir report.html y la data al repo, comenta
+# las líneas siguientes:
+practica-reproducibilidad/
+
+/.quarto/

@@ -1,0 +1,8 @@
+project:
+  title: "practica-reproducibilidad"
+  # Todo el output renderizado (report.html + recursos) va a la subcarpeta:
+  output-dir: practica-reproducibilidad
+
+execute:
+  # Ejecutar siempre desde cero (no usar caché) para garantizar reproducibilidad
+  freeze: false
